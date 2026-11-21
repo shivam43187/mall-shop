@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { formatPrice, productById } from '../data/products'
+import { useCatalog } from '../data/catalog'
+import { formatPrice } from '../data/products'
 import type { Store } from '../data/stores'
 import { controls, isTouch, picker, player } from '../lib/input'
 import { cartTotals, useCart, useUI } from '../lib/state'
@@ -8,8 +9,11 @@ import { CartDrawer } from './CartDrawer'
 import { Joystick, LookPad } from './Joystick'
 import { Minimap } from './Minimap'
 import { ProductPanel } from './ProductPanel'
+import { useAuth } from '../lib/supabase'
+import { AccountPanel } from './AccountPanel'
+import { AdminPanel } from './AdminPanel'
 import { OrderConfirmation } from './OrderConfirmation'
-import { openCart } from './overlay'
+import { openCart, openOverlay } from './overlay'
 
 function useLocation() {
   const [loc, setLoc] = useState<{ inside?: Store; near?: Store }>({})
@@ -27,7 +31,8 @@ function useLocation() {
 function CartButton() {
   const items = useCart((s) => s.items)
   const locked = useUI((s) => s.locked)
-  const { count, subtotal } = cartTotals(items)
+  const byId = useCatalog((s) => s.byId)
+  const { count, subtotal } = cartTotals(items, byId)
   return (
     <button className="cart-button" onClick={openCart} aria-label={`Cart, ${count} items`}>
       <span aria-hidden>🛒</span>
@@ -38,9 +43,20 @@ function CartButton() {
   )
 }
 
+function AccountButton() {
+  const session = useAuth((s) => s.session)
+  return (
+    <button className="cart-button light" onClick={() => openOverlay({ type: 'account' })}>
+      <span aria-hidden>👤</span>
+      <span>{session ? 'Account' : 'Sign in'}</span>
+    </button>
+  )
+}
+
 function Hint({ inside }: { inside?: Store }) {
   const aimedId = useUI((s) => s.aimedId)
-  const aimed = aimedId ? productById.get(aimedId) : undefined
+  const byId = useCatalog((s) => s.byId)
+  const aimed = aimedId ? byId.get(aimedId) : undefined
   if (aimed) {
     return (
       <div className="hint">
@@ -54,7 +70,17 @@ function Hint({ inside }: { inside?: Store }) {
   return null
 }
 
+function usePruneCart() {
+  const complete = useCatalog((s) => s.complete)
+  const byId = useCatalog((s) => s.byId)
+  const prune = useCart((s) => s.prune)
+  useEffect(() => {
+    if (complete) prune(byId)
+  }, [complete, byId, prune])
+}
+
 export function Hud() {
+  usePruneCart()
   const { inside, near } = useLocation()
   const overlay = useUI((s) => s.overlay)
   const locked = useUI((s) => s.locked)
@@ -78,11 +104,13 @@ export function Hud() {
   return (
     <>
       {isTouch && started && !overlay && <LookPad onTap={onTap} />}
+      {/* Outside .hud so the buttons stay clickable above the pause card and panels. */}
+      <div className={`top-left${overlay ? ' overlay-open' : ''}`}>
+        <div className="brand">Mall Shop</div>
+        {started && <CartButton />}
+        {started && <AccountButton />}
+      </div>
       <div className="hud">
-        <div className="top-left">
-          <div className="brand">Mall Shop</div>
-          {started && <CartButton />}
-        </div>
         {inside ? (
           <div className="location" style={{ borderColor: inside.color }}>
             <span className="dot" style={{ background: inside.color }} />
@@ -107,6 +135,10 @@ export function Hud() {
             <ProductPanel key={overlay.id} id={overlay.id} />
           ) : overlay.type === 'order' ? (
             <OrderConfirmation sessionId={overlay.sessionId} />
+          ) : overlay.type === 'account' ? (
+            <AccountPanel />
+          ) : overlay.type === 'admin' ? (
+            <AdminPanel />
           ) : (
             <CartDrawer />
           )}

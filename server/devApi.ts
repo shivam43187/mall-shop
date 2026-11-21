@@ -19,9 +19,9 @@ export function devApi(): Plugin {
           return send(res, 404, { error: 'Not found' })
         }
         const mod = (await server.ssrLoadModule(`/api/${route}.ts`)) as { default: (req: unknown, res: unknown) => Promise<unknown> }
-        const body = req.method === 'POST' ? await readJson(req) : undefined
+        const rawBody = req.method === 'POST' ? await readRaw(req) : undefined
         await mod.default(
-          { method: req.method, headers: req.headers, query: Object.fromEntries(url.searchParams), body },
+          { method: req.method, headers: req.headers, query: Object.fromEntries(url.searchParams), body: parseJson(rawBody), rawBody },
           vercelLikeResponse(res),
         )
       })
@@ -49,16 +49,21 @@ function vercelLikeResponse(res: ServerResponse) {
   return r
 }
 
-async function readJson(req: IncomingMessage) {
+async function readRaw(req: IncomingMessage) {
   const chunks: Buffer[] = []
   let size = 0
   for await (const c of req) {
     size += (c as Buffer).length
-    if (size > 100_000) return undefined
+    if (size > 1_000_000) break
     chunks.push(c as Buffer)
   }
+  return Buffer.concat(chunks)
+}
+
+function parseJson(raw: Buffer | undefined) {
+  if (!raw?.length) return undefined
   try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    return JSON.parse(raw.toString('utf8'))
   } catch {
     return undefined
   }

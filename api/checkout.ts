@@ -6,7 +6,7 @@ import { originOf } from '../server/origin'
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST.' })
   try {
-    res.status(200).json(await createCheckout(req.body, originOf(req.headers)))
+    res.status(200).json(await createCheckout(req.body, originOf(req.headers), req.headers.authorization))
   } catch (e) {
     const status = e instanceof HttpError ? e.status : 500
     if (status === 500) console.error(e)

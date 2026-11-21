@@ -1,7 +1,8 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { PRODUCTS, formatPrice, type Product } from '../data/products'
+import { MAX_PER_STORE, useCatalog } from '../data/catalog'
+import { formatPrice, type Product } from '../data/products'
 import { MALL, STORES, storeFrontX, type Store } from '../data/stores'
 import { controls, isTouch, picker } from '../lib/input'
 import { useUI } from '../lib/state'
@@ -21,8 +22,8 @@ interface Slot {
 }
 
 /** Where each store's products sit: two per display table, and a row along two of the back shelves. */
-function slotsFor(store: Store): Slot[] {
-  const products = PRODUCTS.filter((p) => p.storeId === store.id)
+function slotsFor(store: Store, all: Product[]): Slot[] {
+  const products = all.filter((p) => p.storeId === store.id).slice(0, MAX_PER_STORE)
   if (products.length === 0) return []
   const { x, dir } = storeFrontX(store)
   // Face the store entrance, i.e. back toward the hallway.
@@ -40,9 +41,13 @@ function slotsFor(store: Store): Slot[] {
 
   const shelfX = x + dir * (D - 0.55)
   const span = W - 2.5
-  for (const [y, tag] of [[1.44, true], [0.64, false]] as const) {
-    products.forEach((product, i) => {
-      const pz = store.z - span / 2 + (span * (i + 0.5)) / products.length
+  // Up to 8 products: both rows show everything. More than that: split them across the two rows.
+  const half = Math.ceil(products.length / 2)
+  const rows: [number, boolean, Product[]][] =
+    products.length <= 8 ? [[1.44, true, products], [0.64, false, products]] : [[1.44, true, products.slice(0, half)], [0.64, true, products.slice(half)]]
+  for (const [y, tag, row] of rows) {
+    row.forEach((product, i) => {
+      const pz = store.z - span / 2 + (span * (i + 0.5)) / row.length
       // Scale 1.2 keeps the tallest models (~0.58 m) under the shelf above (~0.72 m clearance).
       slots.push({ product, position: [shelfX, y, pz], rotationY, tag, scale: 1.2 })
     })
@@ -123,7 +128,8 @@ function slotOf(obj: THREE.Object3D | null): { slot: number; productId: string }
 
 /** All products in all stores, plus picking (crosshair on desktop, tap on touch). */
 export function Products() {
-  const slots = useMemo(() => STORES.flatMap(slotsFor), [])
+  const all = useCatalog((s) => s.products)
+  const slots = useMemo(() => STORES.flatMap((s) => slotsFor(s, all)), [all])
   const { camera, gl, scene } = useThree()
   const raycaster = useMemo(() => {
     const r = new THREE.Raycaster()

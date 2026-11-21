@@ -1,7 +1,8 @@
 import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { useState } from 'react'
-import { formatPrice, productById } from '../data/products'
+import { useCatalog } from '../data/catalog'
+import { formatPrice, type Product } from '../data/products'
 import { storeById } from '../data/stores'
 import { MAX_QTY, useCart, useUI } from '../lib/state'
 import { ProductModel } from '../scene/ProductModel'
@@ -9,7 +10,23 @@ import { closeOverlay } from './overlay'
 
 /** 2D panel for one product, with a live 3D preview you can spin. */
 export function ProductPanel({ id }: { id: string }) {
-  const product = productById.get(id)!
+  const product = useCatalog((s) => s.byId.get(id))
+  if (!product) {
+    return (
+      <div className="panel cart" role="dialog">
+        <div className="order-body">
+          <p>This product is no longer available.</p>
+          <button className="primary" onClick={closeOverlay}>
+            Back to the mall
+          </button>
+        </div>
+      </div>
+    )
+  }
+  return <ProductDetails product={product} />
+}
+
+function ProductDetails({ product }: { product: Product }) {
   const store = storeById.get(product.storeId)!
   const [colour, setColour] = useState(product.colours[0])
   const [size, setSize] = useState<string | undefined>(undefined)

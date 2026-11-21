@@ -98,7 +98,5 @@ export const PRODUCTS: Product[] = [
   { id: 'honey', storeId: 'grocery', name: 'Wild Forest Honey', price: 349, kind: 'jar', description: 'Raw, unprocessed honey, 500 g.', colours: [C('Honey', '#ffa000')] },
 ]
 
-export const productById = new Map(PRODUCTS.map((p) => [p.id, p]))
-
 export const formatPrice = (rupees: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(rupees)
