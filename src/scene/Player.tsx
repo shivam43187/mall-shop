@@ -1,0 +1,87 @@
+import { PointerLockControls } from '@react-three/drei'
+import { useFrame, useThree } from '@react-three/fiber'
+import { useEffect, useRef } from 'react'
+import * as THREE from 'three'
+import { input, isTouch, player } from '../lib/input'
+import { isWalkable } from '../lib/walkable'
+
+const EYE = 1.65
+const WALK = 4.5
+const RUN = 8
+const LOOK_SPEED = 0.004
+
+/**
+ * First-person camera. Desktop: click to lock the mouse, WASD/arrows to move, Shift to run.
+ * Touch: left joystick to move, drag anywhere else to look.
+ */
+export function Player({ onLockChange }: { onLockChange: (locked: boolean) => void }) {
+  const { camera } = useThree()
+  const euler = useRef(new THREE.Euler(0, player.yaw, 0, 'YXZ'))
+  const fwd = useRef(new THREE.Vector3())
+  const right = useRef(new THREE.Vector3())
+
+  useEffect(() => {
+    camera.position.set(player.x, EYE, player.z)
+    camera.rotation.copy(euler.current)
+    if (import.meta.env.DEV) (window as unknown as { __camera: THREE.Camera }).__camera = camera
+    const down = (e: KeyboardEvent) => input.keys.add(e.code)
+    const up = (e: KeyboardEvent) => input.keys.delete(e.code)
+    const clear = () => input.keys.clear()
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    window.addEventListener('blur', clear)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', clear)
+    }
+  }, [camera])
+
+  useFrame((_, dt) => {
+    dt = Math.min(dt, 0.05)
+
+    // Touch look
+    if (input.lookDX || input.lookDY) {
+      const e = euler.current.setFromQuaternion(camera.quaternion, 'YXZ')
+      e.y -= input.lookDX * LOOK_SPEED
+      e.x = THREE.MathUtils.clamp(e.x - input.lookDY * LOOK_SPEED, -1.2, 1.2)
+      camera.quaternion.setFromEuler(e)
+      input.lookDX = input.lookDY = 0
+    }
+
+    const k = input.keys
+    let mz = input.joyY
+    let mx = input.joyX
+    if (k.has('KeyW') || k.has('ArrowUp')) mz += 1
+    if (k.has('KeyS') || k.has('ArrowDown')) mz -= 1
+    if (k.has('KeyD') || k.has('ArrowRight')) mx += 1
+    if (k.has('KeyA') || k.has('ArrowLeft')) mx -= 1
+    const len = Math.hypot(mx, mz)
+    if (len > 1) {
+      mx /= len
+      mz /= len
+    }
+
+    if (mx || mz) {
+      const speed = k.has('ShiftLeft') || k.has('ShiftRight') ? RUN : WALK
+      camera.getWorldDirection(fwd.current)
+      fwd.current.y = 0
+      fwd.current.normalize()
+      right.current.crossVectors(fwd.current, camera.up).normalize()
+      const dx = (fwd.current.x * mz + right.current.x * mx) * speed * dt
+      const dz = (fwd.current.z * mz + right.current.z * mx) * speed * dt
+      const p = camera.position
+      // Move each axis separately so you slide along walls instead of sticking.
+      if (isWalkable(p.x + dx, p.z)) p.x += dx
+      if (isWalkable(p.x, p.z + dz)) p.z += dz
+    }
+
+    camera.position.y = EYE
+    player.x = camera.position.x
+    player.z = camera.position.z
+    player.yaw = euler.current.setFromQuaternion(camera.quaternion, 'YXZ').y
+  })
+
+  if (isTouch) return null
+  return <PointerLockControls selector="#enter-mall" onLock={() => onLockChange(true)} onUnlock={() => onLockChange(false)} />
+}
