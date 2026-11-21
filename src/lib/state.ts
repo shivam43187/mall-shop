@@ -1,8 +1,16 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { productById } from '../data/products'
+import type { Product } from '../data/products'
+import { lineMatchesCatalog } from './cartRules'
+import { MAX_QTY } from './limits'
 
-export type Overlay = null | { type: 'product'; id: string } | { type: 'cart' }
+export type Overlay =
+  | null
+  | { type: 'product'; id: string }
+  | { type: 'cart' }
+  | { type: 'order'; sessionId: string }
+  | { type: 'account' }
+  | { type: 'admin' }
 
 interface UIState {
   overlay: Overlay
@@ -59,9 +67,13 @@ interface CartState {
   setQty: (key: string, qty: number) => void
   remove: (key: string) => void
   clear: () => void
+  /** Drops lines that no longer match the catalog (run once the catalog has loaded). */
+  prune: (byId: Map<string, Product>) => void
 }
 
-export const MAX_QTY = 10
+
+
+export { MAX_QTY }
 
 export const useCart = create<CartState>()(
   persist(
@@ -86,20 +98,25 @@ export const useCart = create<CartState>()(
         })),
       remove: (key) => set((s) => ({ items: s.items.filter((i) => i.key !== key) })),
       clear: () => set({ items: [] }),
+      prune: (byId) =>
+        set((s) => {
+          const items = s.items.filter((i) => lineMatchesCatalog(i, byId))
+          return items.length === s.items.length ? s : { items }
+        }),
     }),
     {
       name: 'mall-shop-cart',
       version: 1,
-      // Saved carts can be stale or edited by hand: keep only lines that still match the catalog.
+      // Saved carts can be stale or edited by hand. Check the shape here; prune() checks the catalog later,
+      // once products added from the admin page have loaded.
       merge: (persisted, current) => {
         const saved = (persisted as Partial<CartState> | undefined)?.items
         const items = (Array.isArray(saved) ? saved : []).flatMap((i): CartItem[] => {
-          const p = productById.get(i?.productId)
-          if (!p || !p.colours.some((c) => c.name === i.colour)) return []
-          if (p.sizes ? !p.sizes.includes(i.size ?? '') : i.size !== undefined) return []
+          if (typeof i?.productId !== 'string' || typeof i.colour !== 'string') return []
+          if (i.size !== undefined && typeof i.size !== 'string') return []
           const qty = Math.floor(Number(i.qty))
           if (!(qty >= 1)) return []
-          return [{ key: [p.id, i.colour, i.size ?? ''].join('|'), productId: p.id, colour: i.colour, size: i.size, qty: Math.min(MAX_QTY, qty) }]
+          return [{ key: [i.productId, i.colour, i.size ?? ''].join('|'), productId: i.productId, colour: i.colour, size: i.size, qty: Math.min(MAX_QTY, qty) }]
         })
         return { ...current, items }
       },
@@ -107,11 +124,11 @@ export const useCart = create<CartState>()(
   ),
 )
 
-export function cartTotals(items: CartItem[]) {
+export function cartTotals(items: CartItem[], byId: Map<string, Product>) {
   let count = 0
   let subtotal = 0
   for (const i of items) {
-    const p = productById.get(i.productId)
+    const p = byId.get(i.productId)
     if (!p) continue
     count += i.qty
     subtotal += p.price * i.qty

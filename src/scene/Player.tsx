@@ -39,9 +39,11 @@ export function Player() {
         return
       }
       if (ui.overlay) return
-      if (e.code === 'KeyC' && ui.started) {
+      // Shortcuts so menus are reachable while the mouse is captured for walking.
+      const shortcut = e.code === 'KeyC' ? 'cart' : e.code === 'KeyU' ? 'account' : null
+      if (shortcut && ui.started) {
         input.keys.clear()
-        ui.open({ type: 'cart' })
+        ui.open({ type: shortcut })
         controls.unlock()
         return
       }

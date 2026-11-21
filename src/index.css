@@ -69,7 +69,7 @@ kbd {
 }
 
 /* ---------- Step 2: products, panel, cart ---------- */
-.top-left { position: absolute; top: 16px; left: 16px; display: flex; gap: 8px; align-items: center; }
+.top-left { position: fixed; top: 16px; left: 16px; display: flex; gap: 8px; align-items: center; z-index: 20; }
 .top-left .brand { position: static; }
 .cart-button {
   pointer-events: auto; display: inline-flex; align-items: center; gap: 6px;
@@ -161,5 +161,31 @@ kbd {
   .hint { bottom: 215px; }
   .toast { bottom: 260px; }
   .top-left { flex-direction: column; align-items: flex-start; }
+  .top-left.overlay-open { display: none; }
 }
 .line-info .stepper { align-self: flex-start; }
+
+/* ---------- Step 3: checkout ---------- */
+.order-body { padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+.order-body p { margin: 0; line-height: 1.5; }
+.lines.compact { padding: 0; }
+.lines.compact li { justify-content: space-between; padding: 8px 0; }
+.cart-button.light { background: rgba(255,255,255,0.92); color: #1d1d1f; }
+.section-title { margin: 6px 0 0; font-size: 15px; }
+.form { display: flex; flex-direction: column; gap: 10px; }
+.form.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form .span2 { grid-column: 1 / -1; }
+.form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: #444; }
+.form input, .form select, .form textarea {
+  font: 15px system-ui, sans-serif; padding: 9px 10px; border: 1px solid #ccc; border-radius: 8px; background: #fff; color: #1d1d1f;
+}
+.form input[type=color] { padding: 2px; height: 40px; }
+.tabs { display: flex; background: #f2f2f2; border-radius: 10px; padding: 3px; }
+.tabs button { flex: 1; border: 0; background: none; padding: 8px; border-radius: 8px; font-weight: 600; cursor: pointer; color: #555; }
+.tabs button.active { background: #fff; color: #1d1d1f; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+.admin { max-width: 620px; }
+.row-actions { display: flex; gap: 12px; }
+.link.dark { color: #1d1d1f; }
+@media (max-width: 600px) { .form.grid { grid-template-columns: 1fr; } }
+.intro-links { display: flex; gap: 8px; margin-top: 10px; }
+.intro-links .secondary { flex: 1; font-size: 14px; padding: 10px; }
