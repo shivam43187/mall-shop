@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { formatPrice, productById } from '../data/products'
 import { MAX_QTY, cartTotals, useCart } from '../lib/state'
 import { ProductThumb } from './ProductThumb'
@@ -8,6 +9,26 @@ export function CartDrawer() {
   const setQty = useCart((s) => s.setQty)
   const remove = useCart((s) => s.remove)
   const { count, subtotal } = cartTotals(items)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const checkout = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: items.map(({ productId, colour, size, qty }) => ({ productId, colour, size, qty })) }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
+      if (!res.ok || !data.url) throw new Error(data.error ?? 'Could not start checkout. Please try again.')
+      window.location.assign(data.url)
+    } catch (e) {
+      setError((e as Error).message === 'Failed to fetch' ? 'Could not reach the server. Check your connection.' : (e as Error).message)
+      setBusy(false)
+    }
+  }
 
   return (
     <div className="panel cart" role="dialog" aria-label="Your cart">
@@ -59,10 +80,13 @@ export function CartDrawer() {
           <span>Subtotal</span>
           <strong>{formatPrice(subtotal)}</strong>
         </div>
-        <button className="primary" disabled title="Checkout arrives in the next step">
-          Checkout (coming soon)
+        <button className="primary" disabled={items.length === 0 || busy} onClick={checkout}>
+          {busy ? 'Opening secure checkout…' : 'Checkout'}
         </button>
-        <p className="muted small center">Checkout with Stripe test payments is the next step.</p>
+        {error && <p className="error small center">{error}</p>}
+        <p className="muted small center">
+          Test mode: no real money is taken. Pay with card <strong>4242 4242 4242 4242</strong>, any future date and any CVC.
+        </p>
         <button className="secondary" onClick={closeOverlay}>
           Keep shopping
         </button>

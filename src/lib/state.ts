@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { productById } from '../data/products'
+import { MAX_QTY } from './limits'
 
-export type Overlay = null | { type: 'product'; id: string } | { type: 'cart' }
+export type Overlay = null | { type: 'product'; id: string } | { type: 'cart' } | { type: 'order'; sessionId: string }
 
 interface UIState {
   overlay: Overlay
@@ -61,7 +62,7 @@ interface CartState {
   clear: () => void
 }
 
-export const MAX_QTY = 10
+export { MAX_QTY }
 
 export const useCart = create<CartState>()(
   persist(

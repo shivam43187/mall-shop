@@ -163,3 +163,9 @@ kbd {
   .top-left { flex-direction: column; align-items: flex-start; }
 }
 .line-info .stepper { align-self: flex-start; }
+
+/* ---------- Step 3: checkout ---------- */
+.order-body { padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+.order-body p { margin: 0; line-height: 1.5; }
+.lines.compact { padding: 0; }
+.lines.compact li { justify-content: space-between; padding: 8px 0; }

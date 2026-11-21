@@ -8,6 +8,7 @@ import { CartDrawer } from './CartDrawer'
 import { Joystick, LookPad } from './Joystick'
 import { Minimap } from './Minimap'
 import { ProductPanel } from './ProductPanel'
+import { OrderConfirmation } from './OrderConfirmation'
 import { openCart } from './overlay'
 
 function useLocation() {
@@ -102,7 +103,13 @@ export function Hud() {
 
       {overlay && (
         <div className="backdrop">
-          {overlay.type === 'product' ? <ProductPanel key={overlay.id} id={overlay.id} /> : <CartDrawer />}
+          {overlay.type === 'product' ? (
+            <ProductPanel key={overlay.id} id={overlay.id} />
+          ) : overlay.type === 'order' ? (
+            <OrderConfirmation sessionId={overlay.sessionId} />
+          ) : (
+            <CartDrawer />
+          )}
         </div>
       )}
 
