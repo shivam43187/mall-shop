@@ -81,16 +81,18 @@ export async function getOrder(sessionId: unknown) {
 }
 
 /** Saves the order for a completed checkout session. Used by the Stripe webhook. */
-export async function saveOrderForSession(sessionId: string) {
+export async function saveOrderForSession(sessionId: string): Promise<'saved' | 'skipped' | 'failed'> {
+  if (!supabaseAdmin()) return 'skipped'
   const s = stripe()
   const session = await s.checkout.sessions.retrieve(sessionId)
-  if (session.payment_status !== 'paid') return false
+  if (session.payment_status !== 'paid') return 'skipped'
   const lines = await s.checkout.sessions.listLineItems(sessionId, { limit: 100 })
-  return saveOrder(session, {
+  const ok = await saveOrder(session, {
     email: session.customer_details?.email ?? null,
     total: (session.amount_total ?? 0) / 100,
     items: lines.data.map((l) => ({ name: l.description ?? '', qty: l.quantity ?? 0, amount: l.amount_total / 100 })),
   })
+  return ok ? 'saved' : 'failed'
 }
 
 /** Verifies a Stripe webhook signature and returns the event. */

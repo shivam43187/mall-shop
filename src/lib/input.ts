@@ -10,7 +10,7 @@ export const input = {
 }
 
 /** Player position, written each frame for the HUD and minimap. */
-export const player = { x: 0, z: 28, yaw: 0 }
+export const player = { x: 0, z: 28, yaw: 0, /** metres per second, for footsteps */ speed: 0 }
 
 export const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 

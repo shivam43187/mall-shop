@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Product } from '../data/products'
+import type { StoreId } from '../data/stores'
 import { lineMatchesCatalog } from './cartRules'
 import { MAX_QTY } from './limits'
 
@@ -21,6 +22,11 @@ interface UIState {
   locked: boolean
   started: boolean
   toast: string | null
+  /** The shopkeeper currently greeting you, with a counter so re-entering a store greets again. */
+  greeting: { storeId: StoreId; n: number } | null
+  greet: (storeId: StoreId) => void
+  /** Hides the greeting when you walk out of that store. */
+  leave: (storeId: StoreId) => void
   open: (o: Overlay) => void
   close: () => void
   setAimed: (aim: { slot: number; productId: string } | null) => void
@@ -30,6 +36,9 @@ interface UIState {
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined
+let greetTimer: ReturnType<typeof setTimeout> | undefined
+/** How long a shopkeeper's greeting stays on screen. */
+const GREETING_MS = 9000
 
 export const useUI = create<UIState>((set) => ({
   overlay: null,
@@ -38,6 +47,13 @@ export const useUI = create<UIState>((set) => ({
   locked: false,
   started: false,
   toast: null,
+  greeting: null,
+  greet: (storeId) => {
+    clearTimeout(greetTimer)
+    set((s) => ({ greeting: { storeId, n: (s.greeting?.n ?? 0) + 1 } }))
+    greetTimer = setTimeout(() => set({ greeting: null }), GREETING_MS)
+  },
+  leave: (storeId) => set((s) => (s.greeting?.storeId === storeId ? { greeting: null } : s)),
   open: (overlay) => set({ overlay }),
   close: () => set({ overlay: null }),
   setAimed: (aim) =>

@@ -126,6 +126,12 @@ function slotOf(obj: THREE.Object3D | null): { slot: number; productId: string }
   return null
 }
 
+/** People and decorations don't block picking; walls, glass and fixtures do. */
+function isSeeThrough(obj: THREE.Object3D) {
+  for (let o: THREE.Object3D | null = obj; o; o = o.parent) if (o.userData.noPick) return true
+  return false
+}
+
 /** All products in all stores, plus picking (crosshair on desktop, tap on touch). */
 export function Products() {
   const all = useCatalog((s) => s.products)
@@ -142,7 +148,7 @@ export function Products() {
     // Raycast the whole scene and take the nearest hit, so walls and glass block products behind them.
     const pickAt = (ndc: THREE.Vector2) => {
       raycaster.setFromCamera(ndc, camera)
-      return slotOf(raycaster.intersectObject(scene, true)[0]?.object ?? null)
+      return slotOf(raycaster.intersectObject(scene, true).find((h) => !isSeeThrough(h.object))?.object ?? null)
     }
     aim.pick = pickAt
     picker.pick = (clientX, clientY) => {

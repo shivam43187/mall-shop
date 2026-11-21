@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useCatalog } from '../data/catalog'
 import { formatPrice } from '../data/products'
 import type { Store } from '../data/stores'
@@ -9,7 +9,9 @@ import { CartDrawer } from './CartDrawer'
 import { Joystick, LookPad } from './Joystick'
 import { Minimap } from './Minimap'
 import { ProductPanel } from './ProductPanel'
+import { audio } from '../lib/audio'
 import { useAuth } from '../lib/supabase'
+import { SpeechBubble } from './SpeechBubble'
 import { AccountPanel } from './AccountPanel'
 import { AdminPanel } from './AdminPanel'
 import { OrderConfirmation } from './OrderConfirmation'
@@ -55,6 +57,15 @@ function AccountButton() {
   )
 }
 
+function MuteButton() {
+  const muted = useSyncExternalStore(audio.subscribe, () => audio.muted)
+  return (
+    <button className="cart-button light icon" onClick={() => audio.setMuted(!muted)} aria-label={muted ? 'Turn sound on' : 'Mute sound'} title="Sound (M)">
+      <span aria-hidden>{muted ? '🔇' : '🔊'}</span>
+    </button>
+  )
+}
+
 function IntroAccountLabel() {
   const session = useAuth((s) => s.session)
   return <>{session ? 'My account' : 'Sign in'}</>
@@ -77,6 +88,17 @@ function Hint({ inside }: { inside?: Store }) {
   return null
 }
 
+/** Browsers only allow sound after a tap or click, so (re)start audio on the first one once you're in the mall. */
+function useAudioUnlock() {
+  useEffect(() => {
+    const onDown = () => {
+      if (useUI.getState().started) audio.start()
+    }
+    window.addEventListener('pointerdown', onDown)
+    return () => window.removeEventListener('pointerdown', onDown)
+  }, [])
+}
+
 function usePruneCart() {
   const complete = useCatalog((s) => s.complete)
   const byId = useCatalog((s) => s.byId)
@@ -88,6 +110,7 @@ function usePruneCart() {
 
 export function Hud() {
   usePruneCart()
+  useAudioUnlock()
   const { inside, near } = useLocation()
   const overlay = useUI((s) => s.overlay)
   const locked = useUI((s) => s.locked)
@@ -100,6 +123,7 @@ export function Hud() {
 
   const enter = () => {
     setStarted(true)
+    audio.start()
     if (!isTouch) controls.lock()
   }
 
@@ -116,6 +140,7 @@ export function Hud() {
         <div className="brand">Mall Shop</div>
         <CartButton />
         <AccountButton />
+        <MuteButton />
       </div>
       <div className="hud">
         {inside ? (
@@ -134,6 +159,7 @@ export function Hud() {
         {!overlay && started && <Hint inside={inside} />}
         {isTouch && started && !overlay && <Joystick />}
         {toast && <div className="toast">{toast}</div>}
+        {started && !overlay && <SpeechBubble />}
       </div>
 
       {overlay && (
@@ -170,7 +196,7 @@ export function Hud() {
                 </li>
                 <li>Move the mouse to look, click a product to see it</li>
                 <li>
-                  <kbd>C</kbd> cart, <kbd>U</kbd> sign in / account, <kbd>Esc</kbd> pauses
+                  <kbd>C</kbd> cart, <kbd>U</kbd> sign in / account, <kbd>M</kbd> sound, <kbd>Esc</kbd> pauses
                 </li>
               </ul>
             )}

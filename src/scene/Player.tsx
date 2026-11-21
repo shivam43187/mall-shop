@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef, type ComponentRef } from 'react'
 import * as THREE from 'three'
 import { controls, input, isTouch, picker, player } from '../lib/input'
+import { audio } from '../lib/audio'
 import { useUI } from '../lib/state'
 import { isWalkable } from '../lib/walkable'
 
@@ -40,6 +41,7 @@ export function Player() {
       }
       if (ui.overlay) return
       // Shortcuts so menus are reachable while the mouse is captured for walking.
+      if (e.code === 'KeyM' && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) return audio.setMuted(!audio.muted)
       const shortcut = e.code === 'KeyC' ? 'cart' : e.code === 'KeyU' ? 'account' : null
       if (shortcut && ui.started) {
         input.keys.clear()
@@ -75,6 +77,8 @@ export function Player() {
 
     if (useUI.getState().overlay) {
       input.keys.clear()
+      player.speed = 0
+      audio.update(dt)
       return
     }
 
@@ -91,6 +95,7 @@ export function Player() {
       mz /= len
     }
 
+    const before = { x: camera.position.x, z: camera.position.z }
     if (mx || mz) {
       const speed = k.has('ShiftLeft') || k.has('ShiftRight') ? RUN : WALK
       camera.getWorldDirection(fwd.current)
@@ -106,6 +111,8 @@ export function Player() {
     }
 
     camera.position.y = EYE
+    player.speed = dt > 0 ? Math.hypot(camera.position.x - before.x, camera.position.z - before.z) / dt : 0
+    audio.update(dt)
     player.x = camera.position.x
     player.z = camera.position.z
     player.yaw = euler.current.setFromQuaternion(camera.quaternion, 'YXZ').y

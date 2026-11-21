@@ -1,3 +1,4 @@
+import { CAFE, LAYOUTS, type FloorRect } from '../data/layout'
 import { MALL, STORES, storeFrontX, type Store } from '../data/stores'
 
 interface Rect {
@@ -37,14 +38,27 @@ export const PLANTERS: [number, number][] = [
   [-4, -26], [4, -26], [-4, -14], [4, -14], [-4, 14], [4, 14], [-4, 26], [4, 26],
 ]
 
-/** Round obstacles in the hallway: [x, z, radius]. */
+/** Round obstacles: [x, z, radius]. */
 const obstacles: [number, number, number][] = [
   [0, 0, 2.4 + R], // fountain
   ...PLANTERS.map(([x, z]): [number, number, number] => [x, z, 0.6 + R]),
+  ...CAFE.tables.map(([x, z]): [number, number, number] => [x, z, CAFE.tableRadius + R]),
+  ...[...LAYOUTS.values()].flatMap((l) => l.roundSolids.map(([x, z, r]): [number, number, number] => [x, z, r + R])),
 ]
+
+const grow = (b: FloorRect): FloorRect => ({ minX: b.minX - R, maxX: b.maxX + R, minZ: b.minZ - R, maxZ: b.maxZ + R })
+const { kiosk } = CAFE
+
+/** Store fixtures, benches and the café kiosk, padded so the camera doesn't clip into them. */
+const solids: FloorRect[] = [
+  ...[...LAYOUTS.values()].flatMap((l) => l.solids),
+  ...[5, -5, 16, -16].map((z) => ({ minX: -1, maxX: 1, minZ: z - 0.3, maxZ: z + 0.3 })), // benches
+  { minX: kiosk.x - kiosk.sx / 2, maxX: kiosk.x + kiosk.sx / 2, minZ: kiosk.z - kiosk.sz / 2, maxZ: kiosk.z + kiosk.sz / 2 },
+].map(grow)
 
 export function isWalkable(x: number, z: number) {
   if (obstacles.some(([ox, oz, r]) => Math.hypot(x - ox, z - oz) < r)) return false
+  if (solids.some((b) => inside(b, x, z))) return false
   return rects.some((r) => inside(r, x, z))
 }
 
