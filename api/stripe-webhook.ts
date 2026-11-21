@@ -13,7 +13,8 @@ export default async function handler(req: IncomingMessage & { rawBody?: Buffer 
   try {
     const event = verifyWebhook(req.rawBody ?? (await readRaw(req)), req.headers['stripe-signature'])
     if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
-      await saveOrderForSession(event.data.object.id)
+      // A failed save answers 500 so Stripe retries the event later.
+      if ((await saveOrderForSession(event.data.object.id)) === 'failed') throw new Error('Could not save order')
     }
     res.status(200).json({ received: true })
   } catch (e) {

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { MALL, storeFrontX, type Store } from '../data/stores'
+import { LAYOUTS } from '../data/layout'
 import { makeSignTexture } from '../lib/signTexture'
 
 const { storeDepth: D, storeWidth: W, doorHalfWidth: DW, wallHeight: H } = MALL
@@ -8,6 +9,7 @@ const T = 0.2 // wall thickness
 /** One shop: glass front with a doorway, sign, interior room and placeholder fixtures. */
 export function Storefront({ store }: { store: Store }) {
   const { x, dir } = storeFrontX(store)
+  const layout = LAYOUTS.get(store.id)!
   const sign = useMemo(() => makeSignTexture(store.name, store.category, store.color), [store])
   const cx = x + (dir * D) / 2 // centre of the interior
   const paneW = W / 2 - DW // width of each glass pane beside the door
@@ -86,8 +88,8 @@ export function Storefront({ store }: { store: Store }) {
         </group>
       ))}
       {/* Checkout counter */}
-      <mesh position={[x + dir * 2.2, 0.55, store.z + (W / 2 - 1.2) * (dir === -1 ? 1 : -1)]} castShadow>
-        <boxGeometry args={[2.6, 1.1, 0.9]} />
+      <mesh position={[layout.counter.x, 0.55, layout.counter.z]} castShadow>
+        <boxGeometry args={[layout.counter.sx, 1.1, layout.counter.sz]} />
         <meshStandardMaterial color={store.color} />
       </mesh>
     </group>
