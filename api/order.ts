@@ -1,8 +1,8 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
+import type { ApiRequest, ApiResponse } from '../server/http'
 import { HttpError, getOrder } from '../server/checkout'
 
 /** GET /api/order?session_id=cs_test_… → order summary for the success screen. */
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Use GET.' })
   try {
     res.status(200).json(await getOrder(req.query.session_id))

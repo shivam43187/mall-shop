@@ -1,9 +1,9 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
+import type { ApiRequest, ApiResponse } from '../server/http'
 import { HttpError, createCheckout } from '../server/checkout'
 import { originOf } from '../server/origin'
 
 /** POST /api/checkout — body: { items: [{ productId, colour, size?, qty }] } → { url } */
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST.' })
   try {
     res.status(200).json(await createCheckout(req.body, originOf(req.headers)))
