@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { input } from '../lib/input'
 
 const RADIUS = 50
@@ -8,6 +8,14 @@ export function Joystick() {
   const base = useRef<HTMLDivElement>(null)
   const pointer = useRef<number | null>(null)
   const [knob, setKnob] = useState({ x: 0, y: 0 })
+
+  // If the joystick disappears mid-drag (e.g. a product panel opens), stop walking.
+  useEffect(
+    () => () => {
+      input.joyX = input.joyY = 0
+    },
+    [],
+  )
 
   const move = (e: React.PointerEvent) => {
     if (pointer.current !== e.pointerId || !base.current) return
@@ -49,14 +57,14 @@ export function Joystick() {
 }
 
 /** Full-screen layer behind the HUD: dragging it turns the camera on touch devices. */
-export function LookPad() {
-  const last = useRef<{ id: number; x: number; y: number } | null>(null)
+export function LookPad({ onTap }: { onTap: (clientX: number, clientY: number) => void }) {
+  const last = useRef<{ id: number; x: number; y: number; startX: number; startY: number; t: number } | null>(null)
   return (
     <div
       className="lookpad"
       onPointerDown={(e) => {
         if (last.current) return
-        last.current = { id: e.pointerId, x: e.clientX, y: e.clientY }
+        last.current = { id: e.pointerId, x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY, t: performance.now() }
         e.currentTarget.setPointerCapture(e.pointerId)
       }}
       onPointerMove={(e) => {
@@ -68,7 +76,11 @@ export function LookPad() {
         l.y = e.clientY
       }}
       onPointerUp={(e) => {
-        if (last.current?.id === e.pointerId) last.current = null
+        const l = last.current
+        if (l?.id !== e.pointerId) return
+        last.current = null
+        // A short press that barely moved is a tap, not a look.
+        if (Math.hypot(e.clientX - l.startX, e.clientY - l.startY) < 10 && performance.now() - l.t < 400) onTap(e.clientX, e.clientY)
       }}
       onPointerCancel={() => (last.current = null)}
     />

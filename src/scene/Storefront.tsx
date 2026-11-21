@@ -76,11 +76,11 @@ export function Storefront({ store }: { store: Store }) {
       {[-2.5, 2.5].map((dz) => (
         <group key={`t${dz}`} position={[x + dir * (D / 2), 0, store.z + dz]}>
           <mesh position-y={0.45} castShadow>
-            <boxGeometry args={[2.4, 0.9, 1.4]} />
+            <boxGeometry args={[1.4, 0.9, 2.4]} />
             <meshStandardMaterial color="#fafafa" />
           </mesh>
           <mesh position-y={0.92}>
-            <boxGeometry args={[2.5, 0.04, 1.5]} />
+            <boxGeometry args={[1.5, 0.04, 2.5]} />
             <meshStandardMaterial color={store.color} />
           </mesh>
         </group>
