@@ -1,8 +1,9 @@
 import { PointerLockControls } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ComponentRef } from 'react'
 import * as THREE from 'three'
-import { input, isTouch, player } from '../lib/input'
+import { controls, input, isTouch, picker, player } from '../lib/input'
+import { useUI } from '../lib/state'
 import { isWalkable } from '../lib/walkable'
 
 const EYE = 1.65
@@ -14,8 +15,15 @@ const LOOK_SPEED = 0.004
  * First-person camera. Desktop: click to lock the mouse, WASD/arrows to move, Shift to run.
  * Touch: left joystick to move, drag anywhere else to look.
  */
-export function Player({ onLockChange }: { onLockChange: (locked: boolean) => void }) {
+export function Player() {
   const { camera } = useThree()
+  const lockRef = useRef<ComponentRef<typeof PointerLockControls>>(null)
+  const setLocked = useUI((s) => s.setLocked)
+
+  useEffect(() => {
+    controls.lock = () => lockRef.current?.lock()
+    controls.unlock = () => lockRef.current?.unlock()
+  }, [])
   const euler = useRef(new THREE.Euler(0, player.yaw, 0, 'YXZ'))
   const fwd = useRef(new THREE.Vector3())
   const right = useRef(new THREE.Vector3())
@@ -23,8 +31,22 @@ export function Player({ onLockChange }: { onLockChange: (locked: boolean) => vo
   useEffect(() => {
     camera.position.set(player.x, EYE, player.z)
     camera.rotation.copy(euler.current)
-    if (import.meta.env.DEV) (window as unknown as { __camera: THREE.Camera }).__camera = camera
-    const down = (e: KeyboardEvent) => input.keys.add(e.code)
+    if (import.meta.env.DEV) Object.assign(window, { __camera: camera, __picker: picker, __ui: useUI })
+    const down = (e: KeyboardEvent) => {
+      const ui = useUI.getState()
+      if (e.code === 'Escape' && ui.overlay) {
+        ui.close()
+        return
+      }
+      if (ui.overlay) return
+      if (e.code === 'KeyC' && ui.started) {
+        input.keys.clear()
+        ui.open({ type: 'cart' })
+        controls.unlock()
+        return
+      }
+      input.keys.add(e.code)
+    }
     const up = (e: KeyboardEvent) => input.keys.delete(e.code)
     const clear = () => input.keys.clear()
     window.addEventListener('keydown', down)
@@ -47,6 +69,11 @@ export function Player({ onLockChange }: { onLockChange: (locked: boolean) => vo
       e.x = THREE.MathUtils.clamp(e.x - input.lookDY * LOOK_SPEED, -1.2, 1.2)
       camera.quaternion.setFromEuler(e)
       input.lookDX = input.lookDY = 0
+    }
+
+    if (useUI.getState().overlay) {
+      input.keys.clear()
+      return
     }
 
     const k = input.keys
@@ -83,5 +110,6 @@ export function Player({ onLockChange }: { onLockChange: (locked: boolean) => vo
   })
 
   if (isTouch) return null
-  return <PointerLockControls selector="#enter-mall" onLock={() => onLockChange(true)} onUnlock={() => onLockChange(false)} />
+  // The selector matches nothing, so the mouse is only captured when UI code calls controls.lock().
+  return <PointerLockControls ref={lockRef} selector="#manual-lock-only" onLock={() => setLocked(true)} onUnlock={() => setLocked(false)} />
 }

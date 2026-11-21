@@ -1,7 +1,9 @@
 export type Side = 'left' | 'right'
 
+export type StoreId = 'fashion' | 'electronics' | 'home' | 'books' | 'sports' | 'beauty' | 'toys' | 'grocery'
+
 export interface Store {
-  id: string
+  id: StoreId
   name: string
   category: string
   color: string
@@ -37,3 +39,5 @@ export function storeFrontX(store: Store) {
   const dir = store.side === 'left' ? -1 : 1
   return { x: dir * MALL.hallHalfWidth, dir }
 }
+
+export const storeById = new Map(STORES.map((s) => [s.id, s]))
