@@ -45,12 +45,19 @@ function CartButton() {
 
 function AccountButton() {
   const session = useAuth((s) => s.session)
+  const locked = useUI((s) => s.locked)
   return (
     <button className="cart-button light" onClick={() => openOverlay({ type: 'account' })}>
       <span aria-hidden>👤</span>
       <span>{session ? 'Account' : 'Sign in'}</span>
+      {!isTouch && locked && <kbd>U</kbd>}
     </button>
   )
+}
+
+function IntroAccountLabel() {
+  const session = useAuth((s) => s.session)
+  return <>{session ? 'My account' : 'Sign in'}</>
 }
 
 function Hint({ inside }: { inside?: Store }) {
@@ -107,8 +114,8 @@ export function Hud() {
       {/* Outside .hud so the buttons stay clickable above the pause card and panels. */}
       <div className={`top-left${overlay ? ' overlay-open' : ''}`}>
         <div className="brand">Mall Shop</div>
-        {started && <CartButton />}
-        {started && <AccountButton />}
+        <CartButton />
+        <AccountButton />
       </div>
       <div className="hud">
         {inside ? (
@@ -163,13 +170,21 @@ export function Hud() {
                 </li>
                 <li>Move the mouse to look, click a product to see it</li>
                 <li>
-                  <kbd>C</kbd> opens your cart, <kbd>Esc</kbd> pauses
+                  <kbd>C</kbd> cart, <kbd>U</kbd> sign in / account, <kbd>Esc</kbd> pauses
                 </li>
               </ul>
             )}
             <button id="enter-mall" onClick={enter}>
               {started ? 'Resume' : 'Enter the mall'}
             </button>
+            <div className="intro-links">
+              <button className="secondary" onClick={() => openOverlay({ type: 'account' })}>
+                👤 <IntroAccountLabel />
+              </button>
+              <button className="secondary" onClick={openCart}>
+                🛒 View cart
+              </button>
+            </div>
           </div>
         </div>
       )}
